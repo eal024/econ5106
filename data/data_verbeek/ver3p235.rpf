@@ -1,0 +1,55 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 7.4.3 on pp 235-237
+* Illustration 7.5.4 on pp 245-249
+*
+open data tobacco.asc
+data(format=free,org=columns) 1 2724 $
+  bluecol whitecol flanders walloon nkids nkids2 nadults lnx share2 $
+  share1 nadlnx agelnx age d1 d2 w1 w2 lnx2 age2
+*
+* Tobit I models
+*
+ldv(lower=0.0,censor=lower) share1
+# constant age nadults nkids nkids2 lnx agelnx nadlnx
+exclude(title="Wald Test")
+# age nadults nkids nkids2 lnx agelnx nadlnx
+ldv(lower=0.0,censor=lower) share2
+# constant age nadults nkids nkids2 lnx agelnx nadlnx
+exclude(title="Wald Test")
+# age nadults nkids nkids2 lnx agelnx nadlnx
+*
+* OLS regressions on positive observations only
+*
+linreg(smpl=share1>0) share1
+# constant age nadults nkids nkids2 lnx agelnx nadlnx
+linreg(smpl=share2>0) share2
+# constant age nadults nkids nkids2 lnx agelnx nadlnx
+*
+* Probits for non-zero consumption
+*
+set choice1 = share1>0
+set choice2 = share2>0
+*
+ddv choice1
+# constant age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+exclude
+# age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+ddv choice2
+# constant age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+exclude
+# age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+*
+* Tobit II models
+*
+ddv(noprint) choice1
+# constant age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+prj(mills=lambda)
+linreg(smpl=share1>0) share1
+# constant age nadults nkids nkids2 lnx agelnx nadlnx lambda
+*
+ddv(noprint) choice2
+# constant age nadults nkids nkids2 lnx agelnx nadlnx bluecol whitecol
+prj(mills=lambda)
+linreg(smpl=share2>0) share2
+# constant age nadults nkids nkids2 lnx agelnx nadlnx lambda

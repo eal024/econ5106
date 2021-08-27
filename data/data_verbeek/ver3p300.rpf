@@ -1,0 +1,54 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 8.7.5 from pp 300-302
+*
+open data pe.dat
+calendar(a) 1871
+data(format=prn,org=columns) 1871:1 2002:1 price earnings pe logpe
+*
+* The BJIDENT procedure does graphs like figures 8.7 and 8.8, though it
+* combines the two onto a single graph, with autocorrelations as black
+* bars and partial autocorrelations as blue or hatched bars. By using
+* logpe as the input series with diffs=1, it will do both the graph for
+* the undifferenced series and first differenced. The 0 difference
+* series shows the typical behavior of a series which needs differencing
+* to make it stationary; that's already been decided anyway.
+*
+@bjident(diffs=1) logpe
+*
+* The REGCORRS procedure graphs the residual autocorrelations and
+* performs a Q test for a number of lags determined from the number of
+* observations. If you want to control the number of lags in the
+* diagnostic test, you can use the CORRELATE instruction with the qstats
+* and number options. span is used for doing multiple tests with lags
+* equally spaced, so here span=6,number=12 will do 6 and 12.
+* span=5,number=20 would do 5,10,15 and 20.
+*
+* The coefficients differ slightly from those in the text because of
+* differences in the method used to fit the model. The RATS instructions
+* use full sample maximum likelihood. An alternative to this is
+* conditional maximum likelihood, which is apparently what was used in
+* the text. These differ in how they handle the first few observations.
+* In a sample as large as this, the differences in the results tend to
+* be quite small.
+*
+boxjenk(ar=4,constant,diffs=1,maxl) logpe
+@RegCorrs(title="AR(4) model",number=12,dfc=%narma)
+corr(qstats,span=6,number=12,method=yule,dfc=%narma) %resids
+boxjenk(ma=4,constant,diffs=1,maxl) logpe
+@RegCorrs(title="MA(4) model",number=12,dfc=%narma)
+corr(qstats,span=6,number=12,dfc=%narma) %resids
+*
+* The skipped lags are done by using ar=||list of lags|| or
+* ma=||list of lags||.
+*
+*
+boxjenk(ar=||2,4||,constant,diffs=1,maxl) logpe
+corr(qstats,span=6,number=12,dfc=%narma) %resids
+boxjenk(ma=||2,4||,constant,diffs=1,maxl) logpe
+corr(qstats,span=6,number=12,dfc=%narma) %resids
+*
+boxjenk(ar=||2||,constant,diffs=1,maxl) logpe
+corr(qstats,span=6,number=12,dfc=%narma) %resids
+boxjenk(ma=||2||,constant,diffs=1,maxl) logpe
+corr(qstats,span=6,number=12,dfc=%narma) %resids

@@ -1,0 +1,41 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 4.8 from pp 111-115
+*
+open data icecream.dat
+calendar(daysperentry=28) 1951:3:18
+data(format=prn,org=columns) 1 30 cons income price temp time
+set temp100 = temp/100
+graph(footer="Figure 4.2 Ice Cream Consumption, Price and Temperature",key=below) 3
+# cons
+# price
+# temp100
+*
+linreg cons / resids
+# constant price income temp
+prj fitted
+graph(footer="Figure 4.3 Actual and Fitted Values for Ice Cream Consumption") 2
+# fitted
+# cons
+*
+* Breush-Godfrey test. If there's a question about the exogeneity of the
+* regressors, you would include them in this auxiliary regression.
+*
+linreg resids
+# resids{1}
+cdf(title="Breusch-Godfrey Test-Exogenous Regressors") chisqr %trsquared 1
+*
+* Estimation with AR1 errors. The default method for choosing the "rho"
+* is the Hildreth-Lu grid search procedure. You can use the METHOD=CORC
+* option on AR1 if you want to use Cochrane-Orcutt. It will give almost
+* identical results in this case.
+*
+ar1 cons
+# constant price income temp
+*
+* Rerunning the OLS regression with current and lagged temp. You show
+* lags with the notation {list of lags}. Note that lags are shown as
+* **positive** values in the list - not negative.
+*
+linreg cons
+# constant price income temp{0 1}

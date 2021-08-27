@@ -1,0 +1,70 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 9.6 from pp 347-352
+*
+open data money.prn
+calendar(q) 1954:1
+data(format=prn,org=columns) 1954:1 1994:4 quarter m infl cpr y tbr
+*
+linreg m / resmd
+# constant y tbr
+*
+* The ADF statistic in the text is slightly different from that produced
+* by EGTESTRESIDS because the text used a D-F test with the constant.
+*
+@egtestresids(nvar=3,lags=6,title="Money Demand Equation") resmd
+graph(footer="Figure 9.1 Residuals of Money Demand Equation")
+# resmd
+*
+linreg infl / resfish
+# constant tbr
+@egtestresids(nvar=2,lags=6,title="Fisher Equation") resfish
+graph(footer="Figure 9.2 Residuals of Fisher Equation")
+# resfish
+*
+linreg cpr / resrisk
+# constant tbr
+@egtestresids(nvar=2,lags=6,title="Risk Premium") resrisk
+graph(footer="Figure 9.3 Residuals of Risk Premium Equation")
+# resfish
+*
+* The analysis in the book appears to have been done with the
+* "restricted constant" model for the deterministic variables. That
+* doesn't allow for trends in any of the variables. (A better choice
+* probably would have been DET=CONSTANT, which allows for trends, since
+* Y and M have them).
+*
+@johmle(lags=5,det=rc)
+# m infl cpr y tbr
+@johmle(lags=6,det=rc,vectors=evectors)
+# m infl cpr y tbr
+*
+* With multiple cointegrating vectors, it's easier to do the rest of the
+* analysis with CATS, which is specifically designed for analyzing
+* complicated cointegrating spaces. We'll show how to normalize the
+* cointegrating vectors and estimate the error correction form using
+* standard RATS instructions.
+*
+* Rotate the cointegrating vectors to have the desired normalizations.
+*
+compute twovectors=%xsubmat(evectors,1,6,1,2)
+compute reweight=-1.0*inv(||twovectors(1,1),twovectors(1,2)|twovectors(3,1),twovectors(3,2)||)
+compute rotated=twovectors*reweight
+*
+* This creates the two error correction relationships for input into the
+* VAR system. With the restricted constant model for cointegration, the
+* cointegrating vector includes a constant, but the VAR does not.
+*
+equation(coeffs=%xcol(rotated,1)) ect1
+# m infl cpr y tbr constant
+equation(coeffs=%xcol(rotated,2)) ect2
+# m infl cpr y tbr constant
+*
+system(model=ectmodel)
+variables m infl cpr y tbr
+lags 1 to 6
+ect ect1 ect2
+end(system)
+*
+estimate
+

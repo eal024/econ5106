@@ -1,0 +1,78 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 4.5 on pp 100-104
+*
+open data labour2.prn
+data(format=prn,org=col) 1 569 capital labour output wage
+*
+linreg labour
+# constant wage output capital
+*
+* Breusch-Pagan regression
+* The test statistic in most auxiliary regression heteroscedasticity
+* tests is T x the centered R^2. You can get this by %TRSQUARED. If you
+* need the similar statistic but with the **uncentered** R^2, use %TRSQ
+* instead. You can also do this particular version of the Breusch-Pagan
+* test using the RegWhiteTest procedure. We'll demonstrate that below.
+*
+set usq = %resids^2
+linreg usq
+# constant wage output capital
+cdf(title="Breusch-Pagan Test") chisqr %trsquared 3
+*
+* Do regression in logs
+*
+set logl = log(labour)
+set logw = log(wage)
+set logk = log(capital)
+set logq = log(output)
+linreg logl
+# constant logw logq logk
+*
+set usq = %resids^2
+*
+* White test, done using auxiliary regression
+*
+set logw2 = logw^2
+set logq2 = logq^2
+set logk2 = logk^2
+set logwq = logw*logq
+set logwk = logw*logk
+set logqk = logq*logk
+*
+linreg usq
+# constant logw logq logk logw2 logq2 logk2 logwq logwk logqk
+cdf(title="White Heteroscedasticity Test") chisqr %nobs*%rsquared %nobs-%ndf-1
+*
+* We now do the White and Breusch-Pagan tests using the RegWhiteTest
+* procedure. You apply this immediately after the regression that you
+* want to test. With TYPE=FULL (the default), this does the full White
+* test with all the squares and interaction terms. If you use TYPE=BP,
+* it does the Breusch-Pagan test.
+*
+linreg logl
+# constant logw logq logk
+@RegWhiteTest
+@RegWhiteTest(type=bp)
+*
+* Repeat the log-linear regression with White standard errors. Note that
+* the coefficient estimates don't change, just the standard errors
+*
+linreg(robusterrors) logl
+# constant logw logq logk
+*
+* EGLS estimation. Run a regression of log(usq) on the explanatory variables
+* to estimate the variance function
+*
+set logusq = log(usq)
+linreg logusq
+# constant logw logq logk
+*
+* Take the fitted values from this and exponentiate to get the estimated
+* variance function. With RATS, you do weighted least squares by using
+* the SPREAD option, which provides the observation by observation variances
+* (or at least a series assumed proportional to them).
+*
+prj fitted
+linreg(spread=exp(fitted)) logl
+# constant logw logq logk

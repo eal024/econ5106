@@ -1,0 +1,112 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 4.11 from pp 120-127
+*
+open data forward2.dat
+cal(m) 1979:1
+data(format=prn,org=columns) 1979:1 2001:12 exusbp exuseur exeurbp $
+  f1usbp f1useur f1eurbp f3usbp f3useur f3eurbp
+*
+graph(footer="Figure 4.5 US$/EUR and US$/GBP Exchange Rates",$
+   key=attached,klabels=||"US$/EUR","US$/GBP"||) 2
+# exuseur
+# exusbp
+*
+set fduseur = log(exuseur)-log(f1useur)
+set fdusbp  = log(exusbp)-log(f1usbp)
+graph(footer="Figure 4.6 Forward Discount, US$/EUR and US$/GBP",$
+  key=attached,klabels=||"US$/EUR","US$/GBP"||) 2
+# fduseur
+# fdusbp
+*
+set feuseur = log(exuseur)-log(f1useur{1})
+set feusbp  = log(exusbp)-log(f1usbp{1})
+*
+linreg feusbp / resbp
+# constant fdusbp{1}
+*
+* Do a joint F-test on the all the coefficients
+*
+exclude(all)
+*
+* Do a sequence of Breusch-Godfrey serial correlation tests. Note that
+* the values are slightly different than those in the text because of a
+* minor difference in the form of the auxiliary regression. The values
+* in the text come from auxiliary regressions which "pad" the lagged
+* residuals with zeros when they run off the beginning of the data set.
+*
+disp "Breusch-Godfrey Tests for US-BP"
+do lags=1,12
+   linreg(noprint) resbp
+   # constant fdusbp{1} resbp{1 to lags}
+   disp "Lags" ## lags ###.## %trsquared #.#### %chisqr(%trsquared,lags)
+end do lags
+*
+* Breusch-Pagan test for heteroscedasticity
+*
+set usq = resbp^2
+linreg usq
+# constant fdusbp{1}
+cdf(title="Breusch-Pagan heteroscedasticity test") chisqr %nobs*%rsquared 1
+*
+* Same analysis applied to the US/EUR
+*
+linreg feuseur / reseur
+# constant fduseur{1}
+exclude(all)
+disp "Breusch-Godfrey Tests for US-EUR"
+do lags=1,12
+   linreg(noprint) reseur
+   # constant fduseur{1} reseur{1 to lags}
+   disp "Lags" ## lags ###.## %trsquared #.#### %chisqr(%trsquared,lags)
+end do lags
+set usq = reseur^2
+linreg usq
+# constant fduseur{1}
+cdf(title="Breusch-Pagan heteroscedasticity test") chisqr %trsquared 1
+*
+* Now analyzing 3-month forward rates
+* Compute new forward discounts
+*
+set fduseur = log(exuseur)-log(f3useur)
+set fdusbp  = log(exusbp)-log(f3usbp)
+set feuseur = log(exuseur)-log(f3useur{3})
+set feusbp  = log(exusbp)-log(f3usbp{3})
+*
+linreg feusbp / resbp
+# constant fdusbp{3}
+disp "Breusch-Godfrey Tests for US-BP, 3 month forward"
+do lags=1,12
+   linreg(noprint) resbp
+   # constant fdusbp{3} resbp{1 to lags}
+   disp "Lags" ## lags ###.## %trsquared #.#### %chisqr(%trsquared,lags)
+end do lags
+*
+linreg feuseur / reseur
+# constant fduseur{3}
+disp "Breusch-Godfrey Tests for US-EUR, 3 month forward"
+do lags=1,12
+   linreg(noprint) reseur
+   # constant fduseur{3} reseur{1 to lags}
+   disp "Lags" ## lags ###.## %trsquared #.#### %chisqr(%trsquared,lags)
+end do lags
+*
+* Breusch-Godfrey tests for correlation above two lags
+*
+linreg(noprint) resbp
+# constant fdusbp{3} resbp{3 to 12}
+cdf(title="Test for correlation lags 3-12, US-BP") chisqr %trsquared 10
+*
+linreg(noprint) reseur
+# constant fduseur{3} reseur{3 to 12}
+cdf(title="Test for correlation lags 3-12, US-EUR") chisqr %trsquared 10
+*
+* Re-estimation with HAC standard errors. H=3, in the book's notation,
+* corresponds to lags=2 for the RATS option.
+*
+linreg(lags=2,lwindow=neweywest) feusbp
+# constant fdusbp{3}
+exclude(all)
+linreg(lags=2,lwindow=neweywest) feuseur
+# constant fduseur{3}
+exclude(all)

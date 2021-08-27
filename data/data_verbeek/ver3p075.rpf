@@ -1,0 +1,112 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 3.6 on pages 75-83
+*
+open data bwages.dat
+data(format=prn,org=columns) 1 1472 wage lnwage educ exper lnexper lneduc male
+table(title="Statistics for Males",smpl=male) / wage educ exper
+table(title="Statistics for Females",smpl=.not.male) / wage educ exper
+*
+linreg wage
+# constant male educ exper
+set expersq = exper^2
+linreg wage / resids
+# constant male educ exper expersq
+*
+* This displays the experience effect graphically, showing the overall
+* effect (combining the linear and quadratic terms) and the marginal
+* effect. These are graphed on a two-scale scatter plot because the
+* overall effect is on a much larger scale than the marginal.
+*
+set testex 1 30 = (t-1)
+set expfnc 1 30 = %beta(4)*testex+%beta(5)*testex^2
+set expmrg 1 30 = %beta(4)+2*%beta(5)*testex
+scatter(style=lines,overlay=line,vlabel="Experience Effect",ovlabel="Marginal Effect") 2
+# testex expfnc
+# testex expmrg
+*
+* Do a scatter plot of residuals vs fitted values
+*
+prj fitted
+scatter(footer="Figure 3.1 Residuals vs Fitted Values, Linear Model",$
+  vlabel="Residual",hlabel="Fitted Value")
+# fitted resids
+*
+* Try the log linear model
+*
+set lnexpersq = lnexper^2
+linreg lnwage / lresids
+# constant male lneduc lnexper lnexpersq
+prj lfit
+*
+* Do the residuals vs fitted scatter plots
+*
+scatter(footer="Figure 3.2 Residuals vs Fitted Values, Log-Linear Model",vlabel="Residual",hlabel="Fitted Value")
+# lfit lresids
+*
+* Test the joint significance of the two experience variables
+*
+exclude
+# lnexper lnexpersq
+*
+* Switch to a reduced specification without the quadratic
+*
+linreg lnwage / lresids
+# constant male lneduc lnexper
+compute rssr=%rss
+*
+* Do a new specification with separate dummies for levels 2-5 of education
+*
+set level2 = educ==2
+set level3 = educ==3
+set level4 = educ==4
+set level5 = educ==5
+*
+linreg lnwage
+# constant male level2 level3 level4 level5 lnexper
+compute fstat=((rssr-%rss)/3)/%seesq
+cdf(title="Test of Restricted Form for Education Variable") ftest fstat 3 %ndf
+*
+* Doing the test as a set of three linear restrictions. Under the restriction,
+* the coefficients are related by e(i)=e(1)*(log(i)-log(1)) for i=2,3,4,5. Since
+* log(1) is zero, this means that e(i+1)/log(i+1)=e(i)/log(i) or
+* e(i)*log(i+1)-e(i+1)*log(i)=0 The coefficients being restricted are the 3rd,
+* 4th and 5th in the regression. The following restrict instruction will test the
+* restriction and print the restricted coefficient vector.
+*
+restrict(print) 3
+# 3 4
+# log(3) -log(2) 0.0
+# 4 5
+# log(4) -log(3) 0.0
+# 5 6
+# log(5) -log(4) 0.0
+*
+* Dummying out all the slope coefficients
+*
+set mlevel2 = male*level2
+set mlevel3 = male*level3
+set mlevel4 = male*level4
+set mlevel5 = male*level5
+set mlnexper = male*lnexper
+*
+linreg lnwage
+# constant male level2 level3 level4 level5 lnexper mlevel2 mlevel3 mlevel4 mlevel5 mlnexper
+compute wagegap=%beta(2)+%beta(8)+%beta(12)*log(20)
+disp "Model estimate of wage gap for 20 years of experience and education level 2"
+disp wagegap*100.0 "Percent"
+exclude(title="Test of differing slope coefficients for males")
+# mlevel2 mlevel3 mlevel4 mlevel5 mlnexper
+*
+* RESET test
+*
+@RegRESET(h=2)
+*
+* Final specification
+*
+set explevel2 = lnexper*level2
+set explevel3 = lnexper*level3
+set explevel4 = lnexper*level4
+set explevel5 = lnexper*level5
+linreg lnwage
+# constant male level2 level3 level4 level5 lnexper explevel2 explevel3 explevel4 explevel5

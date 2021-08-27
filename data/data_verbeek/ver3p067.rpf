@@ -1,0 +1,103 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 3.4 from pages 67-70
+*
+open data housing.dat
+data(format=prn,org=columns) 1 546 price lotsize bedrooms bathrms $
+  stories driveway recroom fullbase gashw airco garagepl prefarea
+*
+set lprice = log(price)
+set llot   = log(lotsize)
+*
+* First specification
+*
+linreg lprice
+# constant llot bedrooms bathrms airco
+*
+* Compute the projected log price for 5000 sq ft lot, 4 bedrooms, 1
+* bath, no A/C.
+*
+compute elogp=%dot(%beta,||1.0,log(5000),4,1,0||)
+*
+* Compute the projected actual price corrected for exponentiation.
+*
+disp "Projected Price" exp(elogp+.5*%seesq)
+*
+* RESET test. At first, we'll demonstrate how to do the auxiliary
+* regressions.
+*
+prj fitted
+set fit2 = fitted^2
+set fit3 = fitted^3
+linreg lprice
+# constant llot bedrooms bathrms airco fit2
+exclude(title="RESET test with quadratic")
+# fit2
+linreg lprice
+# constant llot bedrooms bathrms airco fit2 fit3
+exclude(title="RESET test with quadratic and cubic")
+# fit2 fit3
+*
+* In practice, you'll probably just want to use the @RegRESET procedure.
+* After the LINREG that you want to test, do @RegRESET(h=power)
+*
+linreg lprice
+# constant llot bedrooms bathrms airco
+@RegRESET(h=2)
+@RegRESET(h=3)
+*
+linreg lprice
+# constant llot bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea
+exclude(title="Test of Added Variables")
+# stories driveway recroom fullbase gashw garagepl prefarea
+@RegRESET(h=2)
+@RegRESET(h=3)
+*
+set bedxarea = bedrooms*prefarea
+linreg lprice
+# constant llot bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea bedxarea
+*
+* Return to the preferred regression. Compute a projected price for a
+* fairly well equipped house.
+*
+linreg lprice
+# constant llot bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea
+compute elogp=%dot(%beta,||1.0,log(10000),4,1,1,2,1,1,1,1,2,1||)
+disp "Projected Price" exp(elogp+.5*%seesq)
+*
+* Since we're going to need it for the PE test, get the fitted values
+* from the log regression.
+*
+linreg lprice
+# constant llot bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea
+prj logfit
+*
+* Do the regression with price and lotsize as linear variables
+*
+linreg price
+# constant lotsize bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea
+prj linfit
+*
+* Test linear vs partial log regression
+*
+set loglin = log(linfit)-logfit
+*
+linreg price
+# constant lotsize bedrooms bathrms airco $
+ stories driveway recroom fullbase gashw garagepl prefarea loglin
+exclude(title="Test of linear vs log")
+# loglin
+*
+* Test log vs linear regression
+*
+set linlog = exp(logfit)-linfit
+linreg lprice
+# constant llot bedrooms bathrms airco $
+  stories driveway recroom fullbase gashw garagepl prefarea linlog
+exclude(title="Test of log vs linear")
+# linlog

@@ -1,0 +1,16 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 7.2.3, pp 215-217
+*
+open data credit.dat
+data(format=prn,org=columns) 1 921 booklev ebit invgrade logsales marklev rating reta wka
+table(picture="*.###")
+*
+* Logit models are estimated by DDV with the option DIST=LOGIT. The
+* ORDERED logit is done with the combination of DIST=LOGIT and
+* TYPE=ORDERED.
+*
+ddv(dist=logit) invgrade
+# constant booklev ebit logsales reta wka
+ddv(type=ordered,dist=logit) rating
+# booklev ebit logsales reta wka

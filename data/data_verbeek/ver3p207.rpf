@@ -1,0 +1,26 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 7.1.6 from pp 207-210
+*
+open data benefits.asc
+data(format=free,org=columns) 1 4877 $
+ stateur statemb state age age2 tenure slack abol seasonal $
+ nwhite school12 male bluecol smsa married dkids dykids yrdispl $
+ rr rr2 head y
+*
+linreg y
+# constant rr rr2 age age2 tenure slack abol seasonal head married $
+  dkids dykids smsa nwhite yrdispl school12 male statemb stateur
+ddv(dist=logit) y
+# constant rr rr2 age age2 tenure slack abol seasonal head married $
+  dkids dykids smsa nwhite yrdispl school12 male statemb stateur
+ddv(dist=probit,gresids=gr) y
+# constant rr rr2 age age2 tenure slack abol seasonal head married $
+  dkids dykids smsa nwhite yrdispl school12 male statemb stateur
+*
+prj fit
+set fit2 = fit^2
+set fit3 = fit^3
+mcov(opgstat=lmnormal) / gr
+# %reglist() fit2 fit3
+cdf(title="LM Test for Normality") chisqr lmnormal 2

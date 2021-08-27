@@ -1,0 +1,27 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 5.4 from pp 146-150
+*
+open data schooling.asc
+data(format=free,org=columns) 1 3010 $
+ smsa66 smsa76 nearc2 nearc4 nearc4a nearc4b ed76 ed66 age76 daded $
+ nodaded momed nomomed momdad14 sinmom14 step14 south66 south76 $
+ lwage76 famed black wage76 enroll76 kww iqscore mar76 libcrd14 $
+ exp76 exp762
+*
+set age762 = age76^2
+*
+linreg(title="Wage Equation by OLS") lwage76
+# constant ed76 exp76 exp762 black smsa76 south76
+*
+linreg(title="Reduced Form for Schooling. Estimated by OLS") ed76
+# constant age76 age762 black smsa76 south76 nearc4
+*
+* To do the IV estimates, we use the INSTRUMENTS instruction to list the
+* full set of instruments. These are the explanatory variables we assume
+* are exogenous (constant and the dummies) and the three instruments
+* that we've chosen for the experience variables and schooling.
+*
+instruments constant age76 age762 black smsa76 south76 nearc4
+linreg(title="Wage Equation Estimated by IV",inst) lwage76
+# constant ed76 exp76 exp762 black smsa76 south76

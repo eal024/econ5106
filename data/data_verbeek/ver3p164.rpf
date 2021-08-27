@@ -1,0 +1,97 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Verbeek, example 5.7 from pp 164-167
+*
+open data pricing.dat
+cal(m) 1959:2
+data(format=prn,org=columns) 1959:2 1993:11 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 rf cons
+*
+* Generate the excess returns for r1 to r10 and the gross return for the
+* risk free rate.
+*
+set ex1  = r1-rf
+set ex2  = r2-rf
+set ex3  = r3-rf
+set ex4  = r4-rf
+set ex5  = r5-rf
+set ex6  = r6-rf
+set ex7  = r7-rf
+set ex8  = r8-rf
+set ex9  = r9-rf
+set ex10 = r10-rf
+set gf   = 1+rf
+*
+* The following uses more advanced methods to do the excess returns
+* without making 10 copies of one instruction. %s("ex"+i) is the series
+* ex1 if i=1, ex2 if i=2, etc.
+*
+do i=1,10
+  set %s("ex"+i) = %s("r"+i)-rf
+end do i
+*
+* The basic model is not quite in the form of a simple non-linear IV
+* because the expectation involving the riskfree rate is 1 not 0. There
+* are two ways to attack this. One is to set up 11 formulas that have an
+* expected value of zero, and to estimate with NLSYSTEM with CONSTANT as
+* the only instrument.
+*
+nonlin delta gamma
+frml f1  = delta*cons**(-gamma)*ex1
+frml f2  = delta*cons**(-gamma)*ex2
+frml f3  = delta*cons**(-gamma)*ex3
+frml f4  = delta*cons**(-gamma)*ex4
+frml f5  = delta*cons**(-gamma)*ex5
+frml f6  = delta*cons**(-gamma)*ex6
+frml f7  = delta*cons**(-gamma)*ex7
+frml f8  = delta*cons**(-gamma)*ex8
+frml f9  = delta*cons**(-gamma)*ex9
+frml f10 = delta*cons**(-gamma)*ex10
+frml ff  = delta*cons**(-gamma)*(1+rf)-1
+*
+* This is estimated with the system weight matrix as the identity, and
+* with iterated calculations of the weight matrix. With the input weight
+* matrix, use the robusterrors option to correct the covariance matrix.
+* (This is the one time that robusterrors gets used with NLSYSTEM - when
+* you intentionally provide a "suboptimal" weight matrix. With the
+* standard NLSYSTEM, use the zudep option.
+*
+instruments constant
+nlsystem(inst,sw=%identity(11),robusterrors) / f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 ff
+nlsystem(inst,zudep,swout=sw) / f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 ff
+*
+* The other way to handle this is to use NLLS with a single "residual"
+* formula and 11 instruments, but to use the ZUMEAN option to take care
+* of the assumed mean of 1 for the gf. The zumean vector has the same
+* dimension as the number of instruments. You have to make sure that the
+* values are in the correct slots. Here, gf (the gross return on the
+* risk free rate) is the 11th instrument, so zumean is 0 except for a 1
+* at position 11.
+*
+frml fx  = delta*cons**(-gamma)
+instruments ex1 to ex10 gf
+dec vect zumean(11)
+ewise zumean(i)=(i==11)
+nlls(frml=fx,inst,zumean=zumean,wmatrix=%identity(11),robusterrors)
+nlls(frml=fx,inst,zumean=zumean)
+*
+* The examination of the pricing errors is based upon the estimates
+* using the identity weight matrix
+*
+nlls(frml=fx,inst,zumean=zumean,wmatrix=%identity(11),robusterrors)
+set m = fx
+*
+* Compute annualized expected and actual excess returns. The %COV and
+* %AVG functions are useful here. We generate series with 10
+* observations for the 10 returns being analyzed.
+*
+do i=1,10
+   compute ex = -%cov(m,%s("ex"+i))/%avg(m) , ac = %avg(%s("ex"+i))
+   set expexc i i = exp(12*ex)-1
+   set actexc i i = exp(12*ac)-1
+end do i
+*
+scatter(hmin=0.0,vmin=0.0,style=dots,lines=||0.0,1.0||,$
+   hlabel="Predicted Mean Excess Return",$
+   vlabel="Actual Mean Excess Return",$
+   footer="Figure 5.1 Actual versus Predicted Mean Excess Returns")
+# expexc actexc

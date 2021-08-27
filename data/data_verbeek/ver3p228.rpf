@@ -1,0 +1,36 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 7.3.2 on pp 228-230
+*
+open data patents.dat
+data(format=prn,org=columns) 1 181 p91 p90 lr91 lr90 aerosp chemist computer machines vehicles japan us
+*
+* STATISTICS with FRACTILES will get not just the moment-based summary
+* statistics like mean and standard error, but will also do the most
+* important sample fractiles.
+*
+stats(fractiles) p91
+*
+* Poisson models without and with robust (QMLE) standard errors
+*
+ddv(type=count) p91
+# constant lr91 aerosp chemist computer machines vehicles japan us
+ddv(type=count,robust) p91
+# constant lr91 aerosp chemist computer machines vehicles japan us
+*
+* NegBin I
+*
+frml(lastreg,vector=b) muf
+*
+nonlin b delta
+frml negbini  = mm=(exp(muf)/delta),pp=1.0/(1+delta),%lognegbin(p91,mm,pp)
+compute delta=1.0
+maximize(iters=500) negbini
+*
+* NegBin II
+*
+nonlin b alpha
+compute alpha=.1
+frml negbinii = mm=1.0/alpha,pp=1.0/(1+alpha*exp(muf)),%lognegbin(p91,mm,pp)
+*
+maximize(iters=500) negbinii

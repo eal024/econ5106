@@ -1,0 +1,48 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 10.3 from pp 375-377
+*
+open data males.asc
+calendar(panelobs=8,a) 1980:1
+all 545//1987:01
+data(format=free,org=columns) 1//1980:01 545//1987:01 nr year ag black bus $
+ con ent exper fin hisp hlth hours man mar min nc ne $
+ occ1 occ2 occ3 occ4 occ5 occ6 occ7 occ8 occ9 per pro pub rur $
+ s school tra trad union wage
+*
+set expersq = exper^2
+*
+* The panel regressions are run using the instruction PREG (Panel
+* REGression). METHOD=FIXED, METHOD=BETWEEN and METHOD=RANDOM are the
+* options for fixed, between and random. The results for METHOD=RANDOM
+* in the book are computed using the VCOMP=SA (Swamy-Arora) algorithm
+* for the component variances.
+*
+preg(method=between) wage
+# constant school exper expersq union mar black hisp pub
+preg(method=fixed) wage
+# exper expersq union mar pub
+linreg wage
+# constant school exper expersq union mar black hisp pub
+preg(method=random,vcomp=sa) wage
+# constant school exper expersq union mar black hisp pub
+*
+* This repeats the above regressions, using REPORT to build the table.
+*
+report(action=define,hlabels=||"Variable","Between","Fixed Effects","OLS","Random Effects"||)
+preg(method=between) wage
+# constant school exper expersq union mar black hisp pub
+report(regress)
+preg(method=fixed) wage
+# exper expersq union mar pub
+report(regress)
+linreg wage
+# constant school exper expersq union mar black hisp pub
+report(regress)
+preg(method=random,vcomp=sa) wage
+# constant school exper expersq union mar black hisp pub
+report(regress)
+report(action=format,picture="*.###")
+report(action=show)
+
+

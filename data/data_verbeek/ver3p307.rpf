@@ -1,0 +1,36 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 8.9 on pp 307-311
+*
+open data irates.dat
+cal(m) 1946:12
+data(format=prn,org=columns) 1946:12 1991:2 r1 r2 r3 r5 r6 r11 r12 r36 r60 r120
+*
+graph(footer="Figure 8.9 One Month and 5-Year Interest Rates") 2
+# r1  1970:1 *
+# r60 1970:1 *
+linreg r1 1970:1 *
+# constant r1{1}
+@Regcorrs(number=14)
+*
+@dfunit(lags=1) r1 1969:11 *
+@dfunit(lags=3) r1 1969:09 *
+@dfunit(lags=6) r1 1969:06 *
+*
+report(action=define)
+report(atrow=2,atcol=1,fillby=cols) "Value with t=.95" "Value with t=1" $
+   "OLS Estimate" "standard error" "R^2"
+linreg r3 1970:1 *
+# constant r1
+report(atrow=1,atcol=2,fillby=cols) "Quarterly n=3" 1.0/3.0*(1-.95^3)/(1-.95) 1.0 $
+  %beta(2) %stderrs(2) %rsquared
+linreg r12 1970:1 *
+# constant r1
+report(atrow=1,atcol=3,fillby=cols) "Annual n=12" 1.0/12.0*(1-.95^12)/(1-.95) 1.0 $
+  %beta(2) %stderrs(2) %rsquared
+linreg r60 1970:1 *
+# constant r1
+report(atrow=1,atcol=4,fillby=cols) "5 year n=60" 1.0/60.0*(1-.95^60)/(1-.95) 1.0 $
+  %beta(2) %stderrs(2) %rsquared
+report(action=format,picture="*.###")
+report(action=show)

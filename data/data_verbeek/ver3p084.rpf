@@ -1,0 +1,8 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Exercise 3.2 on page 84
+* This is the set up for that example, which was left as an exercise
+*
+open data clothing.asc
+data(format=free,org=columns) 1 400 tsales sales margin nown nfull npart $
+  naux hoursw hourspw inv1 inv2 ssize start

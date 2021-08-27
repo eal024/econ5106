@@ -1,0 +1,23 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 9.5.4 from pp 345-347
+*
+open data ppp.asc
+cal(m) 1981:1
+data(format=free,org=columns) 1981:1 1996:6 lnit lnfr lnp lnx cpiit cpifr
+*
+* DET=RC isn't the correct model for these data. It's appropriate for
+* series which have no trend (interest rates, for instance). A better
+* choice would have been DET=CONSTANT.
+*
+@johmle(lags=3,det=rc)
+# lnx lnit lnfr
+@johmle(lags=12,det=rc,cv=cvector)
+# lnx lnit lnfr
+*
+* Normalize the cointegrating vector to -1.0 in the first position. Note
+* that with DET=RC, there is a fourth component in the cointegrating
+* vector: the constant.
+*
+compute cvector=-1.0*cvector/cvector(1)
+disp "Normalized Cointegrating Vector" cvector

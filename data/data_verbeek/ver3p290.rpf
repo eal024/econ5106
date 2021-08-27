@@ -1,0 +1,90 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 8.5 from pp 290-293
+*
+open data ppp.asc
+cal(m) 1981:1
+data(format=free,org=columns) 1981:1 1996:6 lnit lnfr lnp lnx cpiit cpifr
+graph(footer="Figure 8.5 Log Consumer Price Index France and Italy",$
+  key=attached,klabels=||"Italy","France"||) 2
+# lnit
+# lnfr
+*
+* This uses REPORT to make a table similar to 8.2, also including *'s on
+* the significant DF tests.
+*
+report(action=define)
+report(atrow=1,atcol=2,tocol=3,align=center,span) "France"
+report(atrow=1,atcol=4,tocol=5,align=center,span) "Italy"
+report(atrow=2,atcol=1,align=centered) "Statistic" "Without trend" "With trend" "Without trend" "With trend"
+do lags=0,12
+   if lags==0
+      report(atrow=3+lags,atcol=1) "DF"
+   else
+      report(atrow=3+lags,atcol=1) "ADF("+lags+")"
+   *
+   * On report, align=decimal will get the decimal points aligned down a
+   * column, even when there are *'s on some of the variables. The
+   * special option is 1 for NONE and 2 for ONESTAR, so 1 + a logical
+   * expression which is true for a significant test statistic (here a
+   * rejection of a unit root) will star the ones we want.
+   *
+   @dfunit(lags=lags,noprint) lnfr
+   compute stars=fix(%cdstat<-2.877)
+   report(atrow=3+lags,atcol=2,align=decimal,special=1+stars) %cdstat
+   @dfunit(lags=lags,noprint,det=trend) lnfr
+   compute stars=fix(%cdstat<-3.435)
+   report(atrow=3+lags,atcol=3,align=decimal,special=1+stars) %cdstat
+   @dfunit(lags=lags,noprint) lnit
+   compute stars=fix(%cdstat<-2.877)
+   report(atrow=3+lags,atcol=4,align=decimal,special=1+stars) %cdstat
+   @dfunit(lags=lags,noprint,det=trend) lnit
+   compute stars=fix(%cdstat<-3.435)
+   report(atrow=3+lags,atcol=5,align=decimal,special=1+stars) %cdstat
+end do lags
+report(action=format,picture="*.###")
+report(action=show,window="Table 8.2 Unit Root Test for Price Indices")
+*
+* Generation of table 8.3.
+*
+report(action=define)
+report(atrow=1,atcol=1) "Statistic"
+report(atrow=1,atcol=2,align=center) "Without trend" "With trend"
+do lags=0,6
+   if lags==0
+      report(atrow=2+lags,atcol=1) "DF"
+   else
+      report(atrow=2+lags,atcol=1) "ADF("+lags+")"
+   @dfunit(lags=lags,noprint) lnx
+   compute stars=fix(%cdstat<-2.877)
+   report(atrow=2+lags,atcol=2,align=decimal,special=1+stars) %cdstat
+   @dfunit(lags=lags,noprint,det=trend) lnx
+   compute stars=fix(%cdstat<-3.435)
+   report(atrow=2+lags,atcol=3,align=decimal,special=1+stars) %cdstat
+end do lags
+report(action=format,picture="*.###")
+report(action=show,window="Table 8.3 Unit Root Test for log Exchange Rate")
+*
+*
+*
+set pppdev = lnx-(lnit-lnfr)
+graph(footer="Figure 8.6 Log Real Exchange Rate")
+# pppdev
+*
+report(action=define)
+report(atrow=1,atcol=1) "Statistic"
+report(atrow=1,atcol=2,align=center) "Without trend" "With trend"
+do lags=0,6
+   if lags==0
+      report(atrow=2+lags,atcol=1) "DF"
+   else
+      report(atrow=2+lags,atcol=1) "ADF("+lags+")"
+   @dfunit(lags=lags,noprint) pppdev
+   compute stars=fix(%cdstat<-2.877)
+   report(atrow=2+lags,atcol=2,align=decimal,special=1+stars) %cdstat
+   @dfunit(lags=lags,noprint,det=trend) pppdev
+   compute stars=fix(%cdstat<-3.435)
+   report(atrow=2+lags,atcol=3,align=decimal,special=1+stars) %cdstat
+end do lags
+report(action=format,picture="*.###")
+report(action=show,window="Table 8.4 Unit Root Test for Log Real Exchange Rate")

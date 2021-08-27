@@ -1,0 +1,42 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+*  Example 2.7 from pp 40-41
+*  ?? New data file absent
+*
+cal(m) 1960:1
+open data capm2.dat
+data(format=prn,org=columns) 1960:1 2002:12 rfood rdur rcon rmrf rf jandum
+*
+* The three group returns (rfood, rdur, rcon) and market return (rmrf)
+* are already provided as excess returns over the risk free rf
+*
+report(action=define)
+report(atrow=1,fillby=cols) "Company" "Excess Returns" "" "Uncentered R^2" "s"
+linreg rfood
+# rmrf
+report(col=new,atrow=1,fillby=cols,align=center) "Food" %beta(1) %stderrs(1) %trsq/%nobs sqrt(%seesq)
+linreg rdur
+# rmrf
+report(col=new,atrow=1,fillby=cols) "Durables" %beta(1) %stderrs(1) %trsq/%nobs sqrt(%seesq)
+linreg rcon
+# rmrf
+report(col=new,atrow=1,fillby=cols) "Constuction" %beta(1) %stderrs(1) %trsq/%nobs sqrt(%seesq)
+report(action=show)
+*
+* Same regressions with an intercept ("CONSTANT")
+*
+linreg rfood
+# constant rmrf
+linreg rdur
+# constant rmrf
+linreg rcon
+# constant rmrf
+*
+* And with the January dummy
+*
+linreg rfood
+# constant jandum rmrf
+linreg rdur
+# constant jandum rmrf
+linreg rcon
+# constant jandum rmrf

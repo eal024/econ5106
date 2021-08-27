@@ -1,0 +1,48 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 9.3 from pp 333-335
+*
+open data ppp.asc
+cal(m) 1981:1
+data(format=free,org=columns) 1981:1 1996:6 lnit lnfr lnp lnx cpiit cpifr
+*
+* Test for cointegration with estimated cointegrating vector
+* lnx = log(exchange rate)
+* lnp = log PItaly - log Pfrance
+*
+* First check for unit root in lnp
+* This uses DISPLAY to do a quick form of a report.
+*
+do lags=0,6
+   @dfunit(lags=lags,noprint) lnp
+   compute wotrend=%cdstat
+   @dfunit(lags=lags,noprint,det=trend) lnp
+   compute wtrend=%cdstat
+   disp lags wotrend wtrend
+end do lags
+*
+* Run the regression to estimate the potential cointegrating vector.
+* Pull out the residuals.
+*
+linreg lnx
+# constant lnp
+set diseq = %resids
+*
+* Do unit root tests on the residuals.
+*
+do lags=0,6
+   @dfunit(lags=lags,noprint) diseq
+   disp lags %cdstat
+end do lags
+*
+* Expand the model to allow the log price indices to enter with
+* unrestricted coefficients.
+*
+linreg lnx
+# constant lnit lnfr
+set diseq = %resids
+*
+do lags=0,6
+   @dfunit(lags=lags,noprint) diseq
+   disp lags %cdstat
+end do lags

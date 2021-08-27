@@ -1,0 +1,32 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 8.4.4 from pp 288-289
+*
+open data pe.dat
+calendar(a) 1871
+data(format=prn,org=columns) 1871:1 2002:1 price earnings pe logpe
+*
+graph(footer="Figure 8.3 Annual log P/E ratio")
+# logpe
+*
+set dpe = logpe-logpe{1}
+*
+* This is the regression used for the basic Dickey-Fuller test
+*
+linreg dpe
+# constant logpe{1}
+*
+* This uses the dfunit procedure to run DF tests for a variety of lags
+*
+do lags=0,6
+   @dfunit(lags=lags) logpe
+end do lags
+*
+* This does the unit root tests on the first difference
+*
+do lags=0,6
+   @dfunit(lags=lags) dpe
+end do lags
+*
+graph(footer="Figure 8.4 Annual Change in log price/earnings ratio")
+# dpe

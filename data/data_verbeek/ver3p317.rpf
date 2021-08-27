@@ -1,0 +1,19 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Illustration 8.10.3 from pp 317-319
+*
+open data garch.dat
+data(format=prn,org=columns) 1 1867 bp cd dm dy sf
+*
+set dlogdm = 100*log(dm/dm{1})
+garch(p=0,q=6,hseries=hh06) / dlogdm
+garch(p=1,q=1,hseries=hh11) / dlogdm
+garch(p=1,q=1,exp,asymmetric,hseries=hha) / dlogdm
+*
+set h06 = sqrt(hh06)
+set h11 = sqrt(hh11)
+set hha = sqrt(hha)
+graph(key=below,klabels=||"ARCH6","EGARCH11","GARCH11"||) 3
+# h06 1770 *
+# hha 1770 *
+# h11 1770 *

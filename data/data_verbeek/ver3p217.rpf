@@ -1,0 +1,52 @@
+*
+* Verbeek, A Guide to Modern Econometrics, 3rd edition
+* Example 7.2.4 on pp 217-220
+*
+open data wtp.dat
+data(format=prn,org=columns) 1 312 bid1 bidh bidl nn ny yn yy depvar age female income
+*
+set upper = %if(nn,bidl,%if(ny,bid1,%if(yn,bidh,%na)))
+set lower = %if(nn,%na,%if(ny,bidl,%if(yn,bid1,bidh)))
+*
+* This is estimated with ldv (limited dependent variable) with the
+* interval option. This gives upper and lower bounds which are the only
+* observables for the dependent variable. lower=%na means that the only
+* information is the upper bound, while upper=%na means the only
+* information is the lower bound.
+*
+ldv(upper=upper,lower=lower,interval,gresid=gr) bid1
+# constant
+*
+* Normality test
+*
+compute sigma=sqrt(%seesq)
+prj z
+set upperz = %if(%valid(upper),(upper-z)/sigma,0.0)
+set lowerz = %if(%valid(lower),(lower-z)/sigma,0.0)
+set upperp = %if(%valid(upper),%cdf(upperz),1.0)
+set lowerp = %if(%valid(lower),%cdf(lowerz),0.0)
+set upperd = %if(%valid(upper),%density(upperz),0.0)
+set lowerd = %if(%valid(lower),%density(lowerz),0.0)
+set grad2  = (upperd*upperz^2-lowerd*lowerz^2)/(upperp-lowerp)/gr
+set grad3  = (upperd*upperz^3-lowerd*lowerz^3)/(upperp-lowerp)/gr
+mcov(opgstat=lmnormal) / gr
+# constant grad2 grad3
+cdf(title="LM Normality Test") chisqr lmnormal 2
+*
+* Same thing but with other explanatory variables
+*
+ldv(upper=upper,lower=lower,interval,gresid=gr) bid1
+# constant age female income
+compute sigma=sqrt(%seesq)
+prj z
+set upperz = %if(%valid(upper),(upper-z)/sigma,0.0)
+set lowerz = %if(%valid(lower),(lower-z)/sigma,0.0)
+set upperp = %if(%valid(upper),%cdf(upperz),1.0)
+set lowerp = %if(%valid(lower),%cdf(lowerz),0.0)
+set upperd = %if(%valid(upper),%density(upperz),0.0)
+set lowerd = %if(%valid(lower),%density(lowerz),0.0)
+set grad2  = (upperd*upperz**2-lowerd*lowerz**2)/(upperp-lowerp)/gr
+set grad3  = (upperd*upperz**3-lowerd*lowerz**3)/(upperp-lowerp)/gr
+mcov(opgstat=lmnormal) / gr
+# constant age female income grad2 grad3
+cdf(title="LM Normality Test") chisqr lmnormal 2
