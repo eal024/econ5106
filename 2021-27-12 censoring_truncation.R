@@ -50,23 +50,29 @@ df_long %>% group_by(name) %>% summarise( mean_y = mean(value, na.rm = T))
 # https://m-clark.github.io/models-by-example/tobit.html#censoring-with-an-upper-limit
 
 # Censored data
-tobit_fun <- function(par, X, y, ul = -Inf, ll = Inf) {
+tobit_fun <-  function(par, X, y, ul = -Inf, ll = Inf) {
     
-    # Only lower or upper limits
-    simga = exp( par[length(par)])
-    beta  = par[-length(par)] 
+    # this function only takes a lower OR upper limit
     
-    if(! is.infinite(ll)) {
+    # parameters
+    sigma = exp(par[length(par)]) 
+    beta  = par[-length(par)]
+    
+    # create indicator depending on chosen limit
+    if (!is.infinite(ll)) {
         limit = ll
         indicator = y > ll
-    } else { limit = ul
-    indicator = y < ul}
+    } else {
+        limit = ul
+        indicator = y < ul
+    }
     
-    # Linear predictor
+    # linear predictor
     lp = X %*% beta
     
-    # Log like
-    ll = sum( indicator*log( (1/sigma)*dnorm( (y-lp)/sigma)) )+ sum( (1-indicator)* log(pnorm(1-indicator)*log(pnorm(lp-limit)/sigma, lower =is.infinite(ll)))) 
+    # log likelihood
+    ll = sum(indicator * log((1/sigma)*dnorm((y-lp)/sigma)) ) + 
+        sum((1-indicator) * log(pnorm((lp-limit)/sigma, lower = is.infinite(ll))))
     
     -ll
 }
@@ -79,7 +85,7 @@ init    <-  c(coef(initmod), log_sigma = log(summary(initmod)$sigma) )
 fit_tobit <- optim(
     
     par = init, 
-    tobit_ll, 
+    tobit_fun, 
     X = x,
     y = df$yc,
     ll = 0, 
@@ -87,99 +93,84 @@ fit_tobit <- optim(
     control = list(maxit = 2000, reltol = 1e-15)
 )
 
+
 fit_tobit
 
-# OLS
-df %>% lm( y ~ lnw , data = .)
+AER::tobit(
+    formula = yc ~lnw,
+    left = 0,
+    right =  Inf
+)
 
-# Censored regression
-library(survival)
-AER::tobit( yc ~ lnw, data = df, left = 0, right = Inf)
+censReg::censReg(data = df, formula = yc ~ lnw, left = 0, right = Inf)
 
-# Truncated regression
-truncreg::truncreg(yt~ lnw, data =df, direction = "left")
 
-# Truncated with oLS
-df %>% na.omit() %>% lm( y ~ lnw, data = .)
 
-# Example Tobit, truncation and Heckman 2-step (selection model) -------------------------------------------------------------
+# Truncation model --------------------------------------------------------
 
-# Example showing inbuilt pacakges for estimating differnet models
+truncreg::truncreg( df = df, formula =  yt ~lnw) %>% summary()
 
-# 1) data
-mroz <- wooldridge::mroz %>%
-    select(hours, wage, nwifeinc, educ, exper, expersq, age, kidslt6, inlf) %>% 
-    as_tibble()
-    
-# 2) Description data 
-skim_fun <- function(x) {list(
-    n = n(),
-    m_ = mean(x, na.rm = T) ,
-    sd_ = sd(x, na.rm = T)  ,
-    min = min(x, na.rm = T) ,
-    max = max(x,na.rm = T) 
+
+
+#  Example: Modeling female labor supply:  ------------------------------
+
+mroz <- read_rds("data/")
+
+# ols
+model_ols <- mroz %>% lm( data = ., formula = hours ~wage + nwifeinc + educ + exper + expersq )
+
+# Hours worked from X
+summary(model_ols)
+model_ols$model %>% nrow()
+
+# If wage = 0, data is censored
+model_censored <- censReg::censReg( data = mroz %>% mutate( wage = ifelse( is.na(wage), 0, wage)  ),
+                  hours ~wage + nwifeinc + educ + exper + expersq,
+                  left = 0
+                  )
+#
+summary(model_censored)
+
+
+
+model_truncated <- truncreg::truncreg(data = mroz ,
+                                      hours ~ wage + nwifeinc + educ + exper + expersq,
+                                      direction = "left",
+                                      point = 0
+                                      )
+
+summary(model_truncated)
+nrow(model_truncated$gradientObs)
+
+
+# Heckman
+
+# Step1 
+mroz_1 <- mroz %>% mutate( obs_index = ifelse( !is.na(wage), 1, 0))
+
+probit <- mroz_1 %>% glm( obs_index ~ nwifeinc + educ + exper + expersq + age + kidslt6,
+                          data = .,
+                          family = binomial( link = "probit"))
+
+
+summary(probit)
+
+# Mills ratio
+mills0 <- dnorm( predict(probit) )/pnorm( predict(probit) )
+
+# distribtion Mills
+ggplot2::qplot( mills0[mroz_1$obs_index == 1 ], geom = "histogram") + theme_light()
+
+
+mroz_2 <- mroz_1 %>% mutate( imr = ifelse(obs_index == 1, mills0, 0))
+
+# Heckman
+selmodel <- lm( data = mroz_2,
+    hours ~ wage + nwifeinc + educ + exper + expersq + imr 
     )
-    }
 
-# descriptive data executed
-mroz %>% summarise( across( .cols = everything(), .fns = skim_fun )) %>%
-    mutate( var = c("n", "mean", "sd", "min", "max")) %>% 
-    pivot_longer(-var) %>%
-    unnest(value) %>% 
-    pivot_wider( names_from = var, values_from = value)
-
-
-# 3) The estimation:
-# Want to estimate the labor supply (female)
-
-# a) OLS
-library(sandwich)
-# sqrt(diag(vcovHC(model, type = "HC1")))
-
-ols <- mroz %>%
-    na.omit() %>% 
-    lm( data = .,hours ~ wage + nwifeinc + educ + exper + expersq)
-
-# b) Tobit
-library(survival)
-tobit <- AER::tobit(hours ~ wage + nwifeinc + educ + exper + expersq,
-                    left = 0,
-                    right = Inf, 
-                    data = mroz
-                    ) 
-
-# c) Truncreg
-truncreg <- truncreg::truncreg(hours ~ wage + nwifeinc + educ + exper + expersq,
-                   data = mroz,
-                   direction = "left")
-
-# d) 
-# OLS truncation
-mroz %>% na.omit( ) %>% lm( hours ~ wage + nwifeinc + educ + exper + expersq, data = .) %>% 
-    summary()
-
-# e) 
-# Heckmans 2-steps
-selmodel <- sampleSelection::heckit(
-    inlf  ~ nwifeinc + educ + exper + expersq + age + kidslt6,
-    hours ~ wage + nwifeinc + educ + exper + expersq,
-                        data = mroz,
-                        method = "2step")
-
-# The results
-summary(ols) # OLS
-tobit_fun() # Censored
-summary(tobit)# Tobit
-length(tobit$linear.predictors)
-summary(selmodel) # Heckman 2-step
-
-
-
-
-
-
-
-
+#
+summary(selmodel)
 
 
 
