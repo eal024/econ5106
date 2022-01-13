@@ -144,6 +144,7 @@ nrow(model_truncated$gradientObs)
 
 
 # Heckman
+# Using: https://m-clark.github.io/models-by-example/heckman-selection.html
 
 # Step1 
 mroz_1 <- mroz %>% mutate( obs_index = ifelse( !is.na(wage), 1, 0))
@@ -154,6 +155,7 @@ probit <- mroz_1 %>% glm( obs_index ~ nwifeinc + educ + exper + expersq + age + 
 
 
 summary(probit)
+
 
 # Mills ratio
 mills0 <- dnorm( predict(probit) )/pnorm( predict(probit) )
@@ -172,9 +174,17 @@ selmodel <- lm( data = mroz_2,
 #
 summary(selmodel)
 
+## 
+library(sampleSelection)
+
+sampleSelection <-  selection( mroz_2$obs_index ~  mroz_2$nwifeinc + mroz_2$educ + mroz_2$exper + mroz_2$expersq + mroz_2$age + mroz_2$kidslt6,
+                               mroz_2$hours ~      mroz_2$wage + mroz_2$nwifeinc + mroz_2$educ + mroz_2$exper + mroz_2$expersq,
+                                 # Method
+                                method = "2step"
+                       )
 
 
-
+summary(sampleSelection)
 
 
 

@@ -5,8 +5,9 @@
 
 library(tidyverse)
 
-# mus18 <- haven::read_dta("http://fmwww.bc.edu/ec-p/data/mus/mus18data.dta")
-mus18 <- readRDS("data/mus18.rds")
+mus18 <- haven::read_dta("http://fmwww.bc.edu/ec-p/data/mus/mus18data.dta")
+
+#mus18 <- readRDS("data/mus18.rds")
 
 # Data structure and Demand for Medical Care
 # Study year 2 and everybody who is 18 years and older
@@ -36,8 +37,6 @@ y_yhat_2 <- sum( (mus18_1$med-fitted(ols))^2 )
 
 # Sigma
 sqrt(y_yhat_2/(N-var))
-
-a$sigma
 
 # coins: %-health cost borne by the insured, paid by the patient
 # -0.73 delta 1% borne by the insured, decreases medical expenditures with 0,7 
@@ -84,7 +83,7 @@ tibble_predict
 
 # c) The average partial effect, increasing from 0 to 100 -----------------
 
-library(censReg) 
+library(censReg, quietly = T) 
 
 tobit_censReg <- censReg(med ~  coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6,
                          data = mus18_1,
@@ -92,6 +91,10 @@ tobit_censReg <- censReg(med ~  coins  + income + age + female + educdec + num +
                          right = Inf)
 
 summary(tobit_censReg)
+
+newdata <- mus18_1 %>% select(med, age ,female, num, income, educdec, site2:site6, coins) %>%
+    summarise_all(mean)
+
 
 predict_censReg <- function( data, censRregModel , output = "yhat"){
     
@@ -137,17 +140,159 @@ truncreg::truncreg(data = mus18_1 %>%   filter( med > 0) ,
 
 # e) Hackman two-steps model ---------------------------------------------
 
-library(sampleSelection)
 
-sampleSelection::selection(
-    data =  mus18_1,
-    coins  ~ income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6,
-    med    ~  coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6
-    method = "2step"
+mus18_2 <- mus18_1 %>% mutate( obs_index = ifelse( med > 0, 1, 0) )
+
+# Probit
+# Coins should not be included
+probit_obs <- mus18_2 %>%
+    glm( formula = obs_index ~ coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6,
+                                data = .,
+                                # Uses different distribution
+                                family = binomial(link = "probit")
+                                )
+
+summary(probit_obs)
+
+mills0 <- dnorm( predict(probit_obs) )/pnorm( predict(probit_obs ) )
+
+summary(mills0)
+
+obs_index <- mus18_1$med > 0
+
+imr <- mills0[obs_index]
+
+mus18_2 <- mus18_2 %>% mutate( imr = ifelse(obs_index == 1, mills0, 0))
+mus18_2 <- mus18_1[ obs_index,] %>% 
+    mutate( imr = imr)
+
+# f) Heckman
+heckman2 <- mus18_2 %>% 
+    #filter( med > 0) %>% 
+    lm(med ~ coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6 + imr,
+       data = .
+       )
+
+
+# Heckman with library(selectionModel) ------------------------------------
+
+
+sampleSelection <-  selection( mroz_2$obs_index ~  mroz_2$nwifeinc + mroz_2$educ + mroz_2$exper + mroz_2$expersq + mroz_2$age + mroz_2$kidslt6,
+                               mroz_2$hours ~      mroz_2$wage + mroz_2$nwifeinc + mroz_2$educ + mroz_2$exper + mroz_2$expersq,
+                               # Method
+                               method = "2step"
 )
 
-selection_2step = selection(observed_index ~ educ + age + z, wearnl ~ educ + age, 
+
+
+
+
+# g) Use result and calucate the effect -----------------------------------
+
+# Effect: Calculate the average partial effect of increasing coins from 0 to 100
+
+newdata_2 <- mus18_2 %>% 
+    select(coins, income, age, female, educdec, num, site2, site3, site4, site5 ,site6, imr) %>% 
+    summarise_all( mean)
+
+
+p_probit <- predict(probit_obs, newdata = newdata_2 %>% select(-imr))
+
+xb <- predict(heckman2, newdata = newdata_2)
+xg <- p_probit*xb
+
+100*-0.59*p_probit + (xb- mean(mills0)*xg*dnorm(xg)) *(-0.59)
+
+
+
+# h) Is normality a suitable assumption? -----------------------------------
+
+mus18_2 %>%  ggplot( aes( x  = med)) + geom_histogram()
+
+mus18_2 %>%  ggplot( aes( x  = log(med) )) +
+    geom_histogram( aes( y = ..density..), alpha = 0.4) +
+    geom_density( color = "red")
+
+
+# i) Estimate the log-linear model med ------------------------------------
+
+model_logmed <- mus18_2 %>% 
+    mutate( logmed = log(med)) %>% 
+    lm( logmed ~  coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6, data = .
+        )
+
+#
+summary(model_logmed)
+
+# Interpret age: log(y) ~ a + b_age + dX + e
+# 1-unit increase in age, give B change in log(y).
+# approx (small value B) 100*B expected per cent change in y, 1 unit increase X
+## 100*0.015, increase med expenditure from delta age.  
+
+tibble(e = model_logmed$residuals) %>% ggplot(aes(x = e)) + geom_histogram(aes(y = ..density..), alpha = 0.4) +
+    geom_density(color = "red")
+
+
+
+# j) Estimate the same model with Heckman selection model -----------------
+
+# 
+probit2 <-  mus18_1 %>%
+    mutate( obs_i = med > 0) %>%
+    glm( obs_i ~ coins  + income + age + female + educdec + num +  site2 + site3 + site4+ site5 + site6,
+         family = binomial("probit"),
+         data = .
+         )
+
+
+summary(probit2)
+
+mills2 <- dnorm( predict(probit2) )/pnorm( predict(probit2 ) )
+
+o_index <- mus18_1$med > 0
+
+imr2 <- mills2[o_index]
+
+summary(imr2)
+
+d <- as.data.frame(mus18_1)
+
+heckman <-
+    lm(
+        I(log(med)) ~ coins  + income + age + female + educdec + num +  site2 + site3 + site4 + site5 + site6 + imr2,
+        data = d[o_index, ] %>% as_tibble()
+    )
+
+summary(heckman)
+
+library(sampleSelection)
+
+
+d <- as.data.frame(mus18_1)
+
+d1 <- d %>% mutate( logmed = log(med))
+
+selectionModel <- selection( o_index ~ d1$coins  + d1$income + d1$age + d1$female + d1$educdec + d1$num +  d1$site2 + d1$site3 + d1$site4+ d1$site5 + d1$site6,
+          d1$logmed ~ d1$coins  + d1$income + d1$age + d1$female + d1$educdec + d1$num +  d1$site2 + d1$site3 + d1$site4+ d1$site5 + d1$site6, 
                             method = '2step')
+
+selectionModel_ml <- selection( o_index ~ d1$coins  + d1$income + d1$age + d1$female + d1$educdec + d1$num +  d1$site2 + d1$site3 + d1$site4+ d1$site5 + d1$site6,
+                             d1$logmed ~ d1$coins  + d1$income + d1$age + d1$female + d1$educdec + d1$num +  d1$site2 + d1$site3 + d1$site4+ d1$site5 + d1$site6, 
+                             method = 'ml')
+
+summary(selectionModel)
+summary(selectionModel_ml)
+
+
+
+# Calculate the marginal effect -------------------------------------------
+
+# Marginal effect from delta coins
+
+
+
+
+
 
 
 
