@@ -69,16 +69,60 @@ mean((mtcars$cyl-fitted(model))^2)
 
 model %>% augment() %>% summarise( see = (sum(.resid^2)/(nrow(.)-3-1))^0.5 )
 
-# CV: leave one out -------------------------------------------------------
+
+# CV- in tidyverse ----------------------------------------------------------------
+
+library(rsample)
+library(gapminder)
+
+# 25% random as test-set, 75% as test
+gap_split <- initial_split( gapminder, prop = 0.75)
+
+# Alterantiv
+train_obs_gap <- sample( x = obs, size =  nrow(auto)/2, replace = 0)
+
+gap_split
+training_data <- training(gap_split)
+testing_data <- training(gap_split)
+
+# Train-set is then div. into train and validate
+
+## Cross-validation: split the train/valdation k-fold times
+
+## - train, x-validation
+# ----X
+# ---X-
+# --x--
+# -x---
+# X----
+
+## Adv. = All obs. as validation. 
+
+# CV: 3-fold Cross-validation.
+cv_split <- vfold_cv(training_data %>% mutate(index = 1:nrow(training_data)), v = 3)
+
+# 
+df_split <- cv_split %>% 
+    mutate( train    = map(splits , ~training(.x)),
+            validate = map(splits,  ~testing(.x)) 
+            )
+
+df_split$train[[1]]$index %>% head(20)
+df_split$train[[2]]$index %>% head(20)
+df_split$train[[3]]$index %>% head(20)
 
 
-
-
-
-
-
-
-
+df_split %>% 
+    mutate( 
+        # The model, fit using the training set
+        model   = map(  train,                      ~.x %>% lm( lifeExp ~ gdpPercap, data = . )),
+        # Predict using the validation set
+        predict = map2( model,validate,   function(x,y)  predict(x, newdata = y) ), 
+        # Calculate the MSE from y (validate-set) and prediction from model
+        mse     = map2(validate, predict, function(x,y)  mean( (x$lifeExp -y)^2  ) )
+            ) %>%
+    # Unnest, and then use the mean MSE
+    unnest( mse)
 
 
 
